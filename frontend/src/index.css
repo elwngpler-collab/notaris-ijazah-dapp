@@ -1,0 +1,2269 @@
+/* =========================================================================
+   TACTICAL TELEMETRY DESIGN SYSTEM
+   Arketipe: CRT Terminal / blockchain verification console.
+   Aturan keras: tanpa gradien, tanpa soft shadow, tanpa border-radius,
+   tanpa glassmorphism. Satu aksen (merah), hijau terminal HANYA untuk
+   status operasional (terhubung/valid/online).
+   ========================================================================= */
+:root {
+  --bg: #0a0a0a;
+  --bg-panel: #121212;
+  --bg-panel-raised: #1a1a1a;
+  --bg-inset: #0d0d0d;
+
+  --fg: #eaeaea;
+  --fg-dim: #9a9a9a;
+  --fg-faint: #5c5c5c;
+
+  --accent: #ff2a2a;
+  --accent-dim: rgba(255, 42, 42, 0.12);
+  --accent-border: rgba(255, 42, 42, 0.45);
+
+  --ok: #4af626;
+  --ok-dim: rgba(74, 246, 38, 0.1);
+  --ok-border: rgba(74, 246, 38, 0.4);
+
+  --border: #2a2a2a;
+  --border-strong: #eaeaea;
+
+  --font-display: "Archivo Black", sans-serif;
+  --font-heading: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --shadow-hard: 4px 4px 0 0 var(--fg);
+  --shadow-hard-accent: 4px 4px 0 0 var(--accent);
+  --shadow-hard-sm: 2px 2px 0 0 var(--fg);
+}
+
+/* =========================================================================
+   RESET & BASE — sudut 90 derajat di mana-mana, tanpa pengecualian
+   ========================================================================= */
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-heading);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+code, .mono {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* =========================================================================
+   APP SHELL — scanline overlay sebagai satu-satunya tekstur (pengganti
+   noise/grain agar ringan secara performa)
+   ========================================================================= */
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.025) 2px, rgba(255, 255, 255, 0.025) 4px);
+}
+
+.bg-glow {
+  display: none; /* glow blur dihapus total — bukan bagian dari palet ini */
+}
+
+/* =========================================================================
+   TACTICAL HEADER — strip flat, bukan pill mengambang
+   ========================================================================= */
+.navbar-pill {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--bg-panel);
+  border-bottom: 2px solid var(--border-strong);
+  flex-wrap: wrap;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.brand-icon {
+  font-size: 1.1rem;
+  filter: grayscale(1) contrast(1.4);
+}
+
+.navbar-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.network-badge, .role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.network-ok { color: var(--ok); border-color: var(--ok-border); }
+.network-warn { color: var(--accent); border-color: var(--accent-border); }
+.role-badge { color: var(--fg); border-color: var(--border-strong); }
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.status-dot.connected {
+  background: var(--ok);
+  animation: termBlink 1.4s steps(1) infinite;
+}
+
+@keyframes termBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+.wallet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  color: var(--fg);
+  padding: 7px 13px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 150ms var(--ease-out-quart), box-shadow 150ms var(--ease-out-quart);
+}
+
+.wallet-chip:hover {
+  box-shadow: var(--shadow-hard-sm);
+  transform: translate(-2px, -2px);
+}
+
+.wallet-chip:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+/* =========================================================================
+   BUTTONS — hard offset shadow, tekan = lempengan turun ke permukaan
+   ========================================================================= */
+.btn-primary-glow, .btn-danger-glow, .btn-ghost, .btn-ghost-sm, .btn-export {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 2px solid var(--border-strong);
+  cursor: pointer;
+  transition: transform 130ms var(--ease-out-quart), box-shadow 130ms var(--ease-out-quart);
+}
+
+.btn-primary-glow {
+  background: var(--accent);
+  color: #0a0a0a;
+  border-color: var(--accent);
+  padding: 13px 26px;
+  box-shadow: var(--shadow-hard);
+}
+
+.btn-primary-glow:hover:not(:disabled) {
+  transform: translate(-3px, -3px);
+  box-shadow: 7px 7px 0 0 var(--fg);
+}
+
+.btn-primary-glow:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 var(--fg);
+}
+
+.btn-primary-glow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-danger-glow {
+  background: var(--bg);
+  color: var(--accent);
+  border-color: var(--accent);
+  padding: 13px 26px;
+  box-shadow: var(--shadow-hard-accent);
+}
+
+.btn-danger-glow:hover:not(:disabled) {
+  transform: translate(-3px, -3px);
+  box-shadow: 7px 7px 0 0 var(--accent);
+  background: var(--accent);
+  color: #0a0a0a;
+}
+
+.btn-danger-glow:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 var(--accent);
+}
+
+.btn-danger-glow:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg);
+  padding: 13px 26px;
+}
+
+.btn-ghost:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn-ghost-sm {
+  background: transparent;
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  padding: 6px 13px;
+  font-size: 0.7rem;
+}
+
+.btn-ghost-sm:hover {
+  border-color: var(--fg);
+  color: var(--fg);
+}
+
+.btn-export {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--border-strong);
+  padding: 12px 24px;
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.btn-export:hover {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #0a0a0a;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--ok);
+}
+
+.full-width { width: 100%; }
+
+/* =========================================================================
+   MAIN CONTENT
+   ========================================================================= */
+.main-content {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* =========================================================================
+   HERO BENTO GRID — komposisi asimetris, bukan stack vertikal
+   ========================================================================= */
+.hero {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto auto;
+  gap: 2px;
+  background: var(--border);
+  border-top: 2px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
+  margin: 0 0 2px 0;
+  animation: heroReveal 480ms var(--ease-out-quart) both;
+}
+
+@keyframes heroReveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-main {
+  grid-column: span 4;
+  background: var(--bg-panel);
+  padding: 56px 48px;
+  text-align: left;
+}
+
+.hero-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--ok);
+  margin: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-tag::before { content: "["; color: var(--fg-faint); }
+.hero-tag::after { content: "]"; color: var(--fg-faint); }
+
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.9rem, 5vw, 3.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0 0 18px;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.hero-title .accent-word { color: var(--accent); }
+
+.hero-subtitle {
+  color: var(--fg-dim);
+  font-size: 0.98rem;
+  max-width: 560px;
+  margin: 0 0 28px;
+  line-height: 1.65;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.hero-readout {
+  grid-column: span 4;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  background: var(--border);
+}
+
+.readout-tile {
+  background: var(--bg-panel-raised);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.readout-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.readout-value {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+  word-break: break-word;
+}
+
+.readout-value.ok { color: var(--ok); }
+
+@media (max-width: 760px) {
+  .hero-readout { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* =========================================================================
+   STATS BENTO — satu blok dominan + dua kecil, bukan 3 kotak sama rata
+   ========================================================================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: repeat(2, auto);
+  gap: 2px;
+  background: var(--border);
+  border: 2px solid var(--border-strong);
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  margin: 0;
+  background: var(--bg-panel);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stat-card:first-child {
+  grid-row: span 2;
+  padding: 30px 26px;
+}
+
+.stat-label {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+}
+
+.stat-card:first-child .stat-value {
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+  line-height: 0.9;
+}
+
+.stat-value.cyan { color: var(--fg); }
+.stat-value.gold { color: var(--accent); }
+
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .stat-card:first-child { grid-row: span 1; }
+}
+
+/* =========================================================================
+   TAB NAVIGATION — bracket-style, bukan pill lembut
+   ========================================================================= */
+.tab-nav {
+  display: flex;
+  gap: 2px;
+  background: var(--border);
+  border: 2px solid var(--border-strong);
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-panel);
+  border: none;
+  color: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 14px 10px;
+  cursor: pointer;
+  transition: background 130ms var(--ease-out-quart), color 130ms var(--ease-out-quart);
+}
+
+.tab-btn::before {
+  content: attr(data-index);
+  color: var(--fg-faint);
+}
+
+.tab-btn.tab-active {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.tab-btn.tab-active::before { color: var(--bg); opacity: 0.5; }
+
+.tab-content {
+  position: relative;
+}
+
+.tab-panel {
+  animation: panelIn 280ms var(--ease-out-quart) both;
+}
+
+.tab-panel-hidden {
+  display: none;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================================================
+   PANELS (glass-card -> flat panel dengan border tegas)
+   ========================================================================= */
+.glass-card {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-panel);
+  border: 2px solid var(--border-strong);
+  padding: 28px;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0 0 6px;
+  color: var(--fg);
+}
+
+.card-subtitle {
+  color: var(--fg-dim);
+  font-size: 0.85rem;
+  margin: 0 0 22px;
+  font-family: var(--font-mono);
+}
+
+/* =========================================================================
+   EMPTY STATE
+   ========================================================================= */
+.empty-state {
+  text-align: center;
+  padding: 52px 20px;
+}
+
+.empty-icon {
+  font-size: 1.8rem;
+  display: block;
+  margin-bottom: 14px;
+  filter: grayscale(1);
+}
+
+.empty-text {
+  color: var(--fg-faint);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+}
+
+/* =========================================================================
+   FORMS
+   ========================================================================= */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.form-field label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.form-field input,
+.form-field select,
+.verify-input,
+.decrypt-box textarea,
+.input-date,
+input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  padding: 13px 14px;
+  font-size: 0.92rem;
+  font-family: var(--font-mono);
+  color: var(--fg);
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 130ms var(--ease-out-quart), box-shadow 130ms var(--ease-out-quart);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.verify-input:focus,
+.decrypt-box textarea:focus,
+input[type="date"]:focus {
+  border-color: var(--ok);
+  box-shadow: inset 0 0 0 1px var(--ok);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.9);
+  cursor: pointer;
+}
+
+.verify-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.verify-form .verify-input { flex: 1; min-width: 200px; }
+
+/* =========================================================================
+   STEP INDICATOR — readout bracket, bukan lingkaran lembut
+   ========================================================================= */
+.step-indicator {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  opacity: 0.35;
+  transition: opacity 150ms var(--ease-out-quart), background 150ms var(--ease-out-quart);
+  font-family: var(--font-mono);
+}
+
+.step:last-child { border-bottom: none; }
+
+.step.step-active {
+  opacity: 1;
+  background: var(--ok-dim);
+}
+
+.step.step-done {
+  opacity: 0.7;
+}
+
+.step-number {
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--fg-faint);
+}
+
+.step.step-active .step-number,
+.step.step-done .step-number {
+  color: var(--ok);
+}
+
+.step-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.step.step-active .step-label { color: var(--fg); }
+
+/* =========================================================================
+   RESULT BOX
+   ========================================================================= */
+.result-box {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--ok-border);
+  background: var(--ok-dim);
+}
+
+.result-box h4 {
+  margin: 0 0 14px;
+  color: var(--ok);
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-row:last-child { border-bottom: none; }
+.result-row span:first-child {
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.result-value { font-weight: 600; color: var(--fg); }
+
+.result-hint {
+  margin: 14px 0 0;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  color: var(--fg-dim);
+  padding: 11px;
+  border: 1px dashed var(--border);
+}
+
+/* =========================================================================
+   COPY BUTTONS — bracket style [COPY]
+   ========================================================================= */
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.hash-truncated {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-inset);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
+  text-align: right;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--fg-dim);
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 130ms var(--ease-out-quart), color 130ms var(--ease-out-quart);
+  white-space: nowrap;
+}
+
+.copy-btn::before { content: "["; color: var(--fg-faint); }
+.copy-btn::after { content: "]"; color: var(--fg-faint); }
+
+.copy-btn:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.copy-btn.copy-btn-success {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #0a0a0a;
+}
+.copy-btn.copy-btn-success::before,
+.copy-btn.copy-btn-success::after { color: #0a0a0a; }
+
+.copy-btn-sm {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg-faint);
+  padding: 3px 7px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: background 130ms var(--ease-out-quart), color 130ms var(--ease-out-quart);
+}
+
+.copy-btn-sm:hover { background: var(--fg); color: var(--bg); }
+.copy-btn-sm.copy-btn-success { background: var(--ok); border-color: var(--ok); color: #0a0a0a; }
+
+/* =========================================================================
+   CERTIFICATE CARD (in-app preview, masih dark/tactical)
+   ========================================================================= */
+.cert-card {
+  position: relative;
+  margin-top: 24px;
+  padding: 30px 24px;
+  text-align: center;
+  overflow: hidden;
+  border: 2px solid var(--border-strong);
+  background: var(--bg-inset);
+}
+
+.cert-card.cert-valid { box-shadow: var(--shadow-hard-sm); border-color: var(--ok-border); }
+.cert-card.cert-revoked { box-shadow: 4px 4px 0 0 var(--accent); border-color: var(--accent-border); }
+
+.cert-ribbon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  transform: none;
+  padding: 5px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border: 1px solid currentColor;
+}
+
+.cert-valid .cert-ribbon { color: var(--ok); }
+.cert-revoked .cert-ribbon { color: var(--accent); }
+
+.cert-icon { font-size: 2rem; margin-bottom: 10px; filter: grayscale(1) contrast(1.3); }
+
+.cert-card h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  margin: 0 0 20px;
+  font-size: 1.3rem;
+}
+
+.cert-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.cert-row:last-child { border-bottom: none; }
+.cert-row span:first-child {
+  color: var(--fg-faint);
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.decrypt-box {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.decrypt-box textarea { font-size: 0.76rem; resize: vertical; }
+
+.decrypted-detail {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+.decrypted-detail h4 {
+  margin: 0 0 10px;
+  color: var(--ok);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.cert-notfound h3 { color: var(--fg-dim); }
+.cert-notfound p { color: var(--fg-faint); font-size: 0.82rem; font-family: var(--font-mono); }
+
+.cert-export-trigger {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  justify-content: center;
+}
+
+/* =========================================================================
+   CONFIRM BOX (revoke)
+   ========================================================================= */
+.confirm-box {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-dim);
+}
+
+.confirm-box p {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--fg-dim);
+}
+
+.confirm-actions { display: flex; gap: 10px; }
+.revoke-card .verify-input { margin-bottom: 18px; }
+
+/* =========================================================================
+   EVENT LOG
+   ========================================================================= */
+.event-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.event-log-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.event-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); }
+
+.event-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: nowrap;
+}
+
+.event-item:last-child { border-bottom: none; }
+
+.event-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 9px;
+  border: 1px solid currentColor;
+  flex-shrink: 0;
+}
+
+.badge-issued { color: var(--ok); }
+.badge-revoked { color: var(--accent); }
+
+.event-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.event-recipient { font-size: 0.85rem; color: var(--fg); font-family: var(--font-heading); }
+
+.event-hash-row { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.event-hash-label { font-size: 0.65rem; color: var(--fg-faint); font-family: var(--font-mono); }
+.event-hash-code {
+  font-size: 0.74rem;
+  font-family: var(--font-mono);
+  color: var(--fg-dim);
+  background: var(--bg-inset);
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+}
+
+/* =========================================================================
+   FOOTER
+   ========================================================================= */
+.app-footer {
+  text-align: center;
+  margin-top: 44px;
+  padding: 20px 24px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  letter-spacing: 0.04em;
+}
+
+/* =========================================================================
+   TOAST — monokrom + 2 hue saja (merah=error, hijau=sukses)
+   ========================================================================= */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+}
+
+.toast {
+  padding: 13px 16px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-hard-sm);
+  animation: toastIn 220ms var(--ease-out-expo);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.toast-success { border-color: var(--ok-border); color: var(--ok); }
+.toast-error { border-color: var(--accent-border); color: var(--accent); }
+.toast-warning { border-left: 1px solid var(--border-strong) !important; border-style: dashed; color: var(--fg); }
+.toast-info { border-style: dotted; color: var(--fg-dim); }
+
+/* =========================================================================
+   EXPORT CERTIFICATE — Swiss Industrial Print (terpisah dari shell gelap,
+   ini dokumen fisik/cetak, bukan UI interaktif — lihat penjelasan di chat)
+   ========================================================================= */
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.export-modal {
+  background: #f8f6f0;
+  color: #1a1610;
+  border: 1px solid #0a0a0a;
+  outline: 4px double #0a0a0a;
+  outline-offset: -10px;
+  max-width: 640px;
+  width: 100%;
+  padding: 52px 44px 40px;
+  position: relative;
+  font-family: "Cormorant Garamond", serif;
+}
+
+/* Ornamen sudut — empat garis L kecil di tiap pojok, sisipan gaya diploma */
+.cert-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+.cert-corner-tl { top: 14px; left: 14px; border-top: 2px solid #0a0a0a; border-left: 2px solid #0a0a0a; }
+.cert-corner-tr { top: 14px; right: 14px; border-top: 2px solid #0a0a0a; border-right: 2px solid #0a0a0a; }
+.cert-corner-bl { bottom: 14px; left: 14px; border-bottom: 2px solid #0a0a0a; border-left: 2px solid #0a0a0a; }
+.cert-corner-br { bottom: 14px; right: 14px; border-bottom: 2px solid #0a0a0a; border-right: 2px solid #0a0a0a; }
+
+/* Badge status kecil di pojok, pengganti bar hitam besar */
+.cert-ribbon-badge {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 11px;
+  border: 1px solid currentColor;
+}
+.ribbon-valid { color: #1a7a3d; }
+.ribbon-revoked { color: #c41e3a; }
+
+.cert-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.export-logo-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  margin: 0 auto 10px;
+  display: block;
+}
+
+.cert-institution-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a4534;
+  margin: 0 0 10px;
+}
+
+.cert-ornament-line {
+  color: #8a7f5c;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+}
+
+.cert-main-title {
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
+  font-size: 2.6rem;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #1a1610;
+  margin: 4px 0 2px;
+}
+
+.cert-main-subtitle {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b5f42;
+  margin: 0 0 30px;
+}
+
+.cert-given-to {
+  text-align: center;
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: #4a4534;
+  margin: 0 0 8px;
+}
+
+.cert-recipient-name {
+  text-align: center;
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 2.2rem;
+  color: #1a1610;
+  margin: 0 0 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #cfc6a8;
+}
+
+.cert-achievement {
+  text-align: center;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.08rem;
+  line-height: 1.6;
+  color: #2a2518;
+  max-width: 460px;
+  margin: 0 auto 20px;
+}
+
+.cert-achievement strong { font-weight: 700; }
+.cert-achievement-generic { color: #4a4534; font-style: italic; }
+
+.cert-date-line {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #6b5f42;
+  letter-spacing: 0.03em;
+  margin: 0 0 8px;
+}
+
+/* Footer teknis — kecil & senyap, informasi audit bukan konten utama */
+.cert-verify-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid #cfc6a8;
+}
+
+.cert-verify-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cert-verify-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.cert-verify-row span:first-child {
+  color: #6b5f42;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cert-verify-row code {
+  color: #1a1610;
+  background: #ece6d4;
+  padding: 2px 6px;
+  font-size: 0.65rem;
+}
+
+.cert-verify-qr {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #0a0a0a;
+  line-height: 0;
+}
+
+.cert-verify-qr p {
+  line-height: normal;
+  margin: 5px 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #6b5f42;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cert-crypto-footnote {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #8a7f5c;
+  letter-spacing: 0.02em;
+  margin: 16px 0 0;
+}
+
+.export-actions { display: flex; gap: 12px; margin-top: 26px; justify-content: center; }
+.export-actions .btn-primary-glow { background: #0a0a0a; border-color: #0a0a0a; color: #f4f4f0; box-shadow: 4px 4px 0 0 #0a0a0a; font-family: var(--font-heading); }
+.export-actions .btn-primary-glow:hover { box-shadow: 7px 7px 0 0 #0a0a0a; }
+.export-actions .btn-ghost { color: #0a0a0a; border: 2px solid #0a0a0a; font-family: var(--font-heading); }
+.export-actions .btn-ghost:hover { background: #0a0a0a; color: #f4f4f0; }
+
+/* =========================================================================
+   PRINT STYLES — teknik "sembunyikan semua, tampilkan hanya target"
+   Memakai visibility (bukan display) supaya tidak peduli separah apa
+   nesting DOM-nya: display:none pada induk akan ikut menyembunyikan
+   semua anak walau anaknya sendiri diberi display:block — visibility
+   tidak punya masalah itu, sehingga #cert-to-print tetap tampil
+   meski berada di dalam beberapa lapis wrapper.
+   ========================================================================= */
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  /* Kunci masalah "PDF 3 halaman/ada halaman kosong": visibility:hidden
+     TIDAK menghapus ruang layout elemen yang disembunyikan (beda dengan
+     display:none) — jadi seluruh konten aplikasi yang "tak kelihatan tapi
+     tetap makan tempat" itu masih dihitung sebagai tinggi halaman, dan
+     browser generate halaman kosong tambahan untuk menampungnya.
+     Solusinya: paksa html/body tingginya jadi 0 & overflow hidden supaya
+     tidak menyumbang tinggi halaman sama sekali, lalu target cetak dibuat
+     position:fixed (relatif ke viewport/halaman cetak, bukan ke induknya)
+     supaya tetap tampil penuh walau induknya "dipipihkan". */
+  html, body {
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
+  #cert-to-print, #ijazah-to-print {
+    visibility: visible !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 auto !important;
+  }
+
+  #cert-to-print *, #ijazah-to-print * {
+    visibility: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* =========================================================================
+   ACCESSIBILITY — reduced motion
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+@media (max-width: 640px) {
+  .navbar-pill { padding: 12px 16px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .tab-btn { font-size: 0.66rem; padding: 12px 6px; }
+  .hero-main { padding: 32px 20px; }
+  .hero-cta { flex-direction: column; }
+  .hero-cta button { width: 100%; }
+  .glass-card { padding: 18px; }
+  .cert-ribbon { top: 10px; right: 10px; }
+}
+
+@media (max-width: 375px) {
+  .main-content { padding: 0 12px 60px; }
+}
+
+/* =========================================================================
+   DEKORASI SISI LAYAR: diagonal hatch + 4 corner bracket viewfinder
+   Mengisi area hitam di kiri-kanan konten supaya terasa disengaja,
+   bukan kosong. Gaya: viewport frame kamera / blueprint engineering.
+   ========================================================================= */
+
+/* Background seluruh app: diagonal hatch ringan (blueprint feel) */
+.app-shell {
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0px,
+    transparent 22px,
+    rgba(255, 255, 255, 0.018) 22px,
+    rgba(255, 255, 255, 0.018) 23px
+  );
+}
+
+/* Scanline overlay tetap di .bg-grid */
+.bg-grid {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 255, 255, 0.022) 3px,
+    rgba(255, 255, 255, 0.022) 4px
+  );
+}
+
+/* Corner bracket kiri atas + kanan bawah */
+.bg-grid::before,
+.bg-grid::after {
+  content: '';
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-grid::before {
+  top: 64px;
+  left: 14px;
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.bg-grid::after {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+  border-right: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Corner bracket kanan atas + kiri bawah */
+.bg-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-frame::before,
+.bg-frame::after {
+  content: '';
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-frame::before {
+  top: 64px;
+  right: 14px;
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+  border-right: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.bg-frame::after {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Label koordinat di sudut (data teknis dekoratif, bukan konten) */
+.bg-corner-label-tr,
+.bg-corner-label-bl {
+  position: fixed;
+  z-index: 0;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.bg-corner-label-tr {
+  top: 96px;
+  right: 18px;
+  text-align: right;
+}
+
+.bg-corner-label-bl {
+  bottom: 46px;
+  left: 18px;
+}
+
+/* Garis vertikal tipis di tepi kiri dan kanan layar */
+.bg-rail-left,
+.bg-rail-right {
+  position: fixed;
+  top: 60px;
+  bottom: 0;
+  z-index: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.bg-rail-left  { left: 8px; }
+.bg-rail-right { right: 8px; }
+
+/* =========================================================================
+   QR CODE SECTION
+   ========================================================================= */
+.qr-section {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+}
+
+.qr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-inset);
+}
+
+.qr-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.qr-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px;
+  flex-wrap: wrap;
+  animation: panelIn 220ms var(--ease-out-quart) both;
+}
+
+.qr-wrapper {
+  flex-shrink: 0;
+  padding: 10px;
+  background: #ffffff;
+  border: 2px solid var(--border-strong);
+  line-height: 0;
+}
+
+.qr-meta {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qr-meta p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg-dim);
+  line-height: 1.5;
+}
+
+/* =========================================================================
+   AUDIT TX SECTION
+   ========================================================================= */
+.audit-section {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+}
+
+.audit-section > .qr-label {
+  display: block;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-inset);
+}
+
+.audit-loading {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg-faint);
+  padding: 14px;
+  margin: 0;
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+
+.audit-item {
+  background: var(--bg-panel);
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-item-full {
+  grid-column: span 2;
+}
+
+.audit-item span {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-faint);
+}
+
+.audit-item code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--fg);
+}
+
+.audit-link {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--ok);
+  text-decoration: none;
+  transition: opacity 130ms;
+}
+
+.audit-link:hover { opacity: 0.75; }
+
+/* =========================================================================
+   EXPORT MODAL — responsive untuk footer verifikasi (info + QR)
+   ========================================================================= */
+@media (max-width: 480px) {
+  .cert-verify-footer { flex-direction: column; align-items: stretch; }
+  .cert-verify-qr { align-self: center; }
+  .audit-grid { grid-template-columns: 1fr; }
+  .audit-item-full { grid-column: span 1; }
+  .export-modal { padding: 40px 22px 32px; }
+  .cert-main-title { font-size: 2rem; }
+  .cert-recipient-name { font-size: 1.7rem; }
+}
+
+/* =========================================================================
+   CERTIFICATE HISTORY (Riwayat Sertifikat Saya)
+   ========================================================================= */
+.history-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.history-toolbar .verify-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  transition: background 130ms var(--ease-out-quart);
+}
+
+.history-item:last-child { border-bottom: none; }
+.history-item:hover { background: var(--bg-panel-raised); }
+
+.history-info {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.history-recipient {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--fg);
+}
+
+.history-date {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.history-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.history-actions {
+  flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+  .history-item { gap: 10px; }
+  .history-actions { width: 100%; }
+  .history-actions .btn-ghost-sm { width: 100%; }
+}
+
+/* =========================================================================
+   SELECT DROPDOWN — samakan tampilan panah dengan tema gelap
+   ========================================================================= */
+.form-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-dim) 50%),
+    linear-gradient(135deg, var(--fg-dim) 50%, transparent 50%);
+  background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.form-field select option {
+  background: var(--bg-inset);
+  color: var(--fg);
+}
+
+/* =========================================================================
+   ADMIN DASHBOARD
+   ========================================================================= */
+.admin-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 22px 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.badge-owner {
+  color: var(--accent);
+}
+
+.self-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.admin-locked-note {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--fg-faint);
+  font-style: italic;
+}
+
+.confirm-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-danger-sm {
+  padding: 6px 13px !important;
+  font-size: 0.7rem !important;
+}
+
+/* =========================================================================
+   EXPORT CARD — logo image asli + tanda tangan pejabat (opsional)
+   ========================================================================= */
+.export-signature-section {
+  text-align: center;
+  margin: 8px 0 20px;
+  padding-top: 8px;
+}
+
+.export-signature-line {
+  margin-bottom: 6px;
+}
+
+.export-signature-script {
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: #1a1610;
+  border-bottom: 1px solid #0a0a0a;
+  padding-bottom: 4px;
+  display: inline-block;
+  min-width: 200px;
+}
+
+.export-signature-name {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1a1610;
+  margin: 6px 0 0;
+}
+
+.export-signature-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #6b5f42;
+  margin: 2px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* =========================================================================
+   FOTO MAHASISWA UPLOAD (form Terbitkan)
+   ========================================================================= */
+.photo-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.photo-upload-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.photo-upload-row input[type="file"] {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-dim);
+  max-width: 100%;
+}
+
+/* =========================================================================
+   PENGATURAN INSTITUSI
+   ========================================================================= */
+.settings-section {
+  margin-bottom: 26px;
+}
+
+.settings-section-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-dim);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-file-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.file-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+.file-upload-preview {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.file-upload-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.file-upload-empty {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--fg-faint);
+  text-align: center;
+}
+
+.file-upload-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-upload-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+}
+
+.file-upload-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.file-upload-hidden-input {
+  display: none;
+}
+
+.settings-hint {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-faint);
+  padding: 10px;
+  border: 1px dashed var(--border);
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .settings-file-grid { grid-template-columns: 1fr; }
+}
+
+/* =========================================================================
+   IJAZAH TEMPLATE — gaya dokumen resmi ijazah universitas konvensional.
+   Sengaja berbeda dari Certificate Card (yang lebih modern/editorial):
+   border klasik, tabel rincian rata kolom, kotak foto + tanda tangan
+   ganda (Rektor & Dekan) berdampingan, meniru ijazah fisik asli.
+   ========================================================================= */
+.ijazah-modal {
+  background: #fdfcf7;
+  color: #1a1610;
+  border: 2px solid #0a0a0a;
+  outline: 1px solid #0a0a0a;
+  outline-offset: 6px;
+  max-width: 680px;
+  width: 100%;
+  padding: 40px 46px;
+  position: relative;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.ijz-serial {
+  position: absolute;
+  top: 16px;
+  right: 22px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #6b5f42;
+  letter-spacing: 0.05em;
+}
+
+.ijz-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  margin-bottom: 26px;
+  margin-top: 6px;
+}
+
+.ijz-logo-lockup {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 150px;
+}
+
+.ijz-logo {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+}
+
+.ijz-institution-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #1a1610;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.ijz-given-block {
+  flex: 1;
+  padding-top: 10px;
+}
+
+.ijz-given-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #4a4534;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ijz-student-name {
+  font-family: "Playfair Display", serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.85rem;
+  color: #1a1610;
+  margin: 0 0 6px;
+}
+
+.ijz-birth-line {
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-size: 0.92rem;
+  color: #4a4534;
+  margin: 0;
+}
+
+.ijz-title-block {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.ijz-main-title {
+  font-family: "Playfair Display", serif;
+  font-weight: 800;
+  font-size: 2.1rem;
+  letter-spacing: 0.3em;
+  color: #1a1610;
+  margin: 0 0 8px;
+  padding-left: 0.3em;
+}
+
+.ijz-degree {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #1a1610;
+  margin: 0;
+}
+
+.ijz-details-table {
+  margin: 0 auto 18px;
+  max-width: 440px;
+}
+
+.ijz-detail-row {
+  display: grid;
+  grid-template-columns: 175px 12px 1fr;
+  gap: 6px;
+  font-size: 0.92rem;
+  padding: 3px 0;
+  color: #2a2518;
+}
+
+.ijz-detail-row span:first-child {
+  font-weight: 600;
+}
+
+.ijz-clause {
+  text-align: center;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #4a4534;
+  max-width: 460px;
+  margin: 0 auto 26px;
+  line-height: 1.5;
+}
+
+.ijz-bottom-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.ijz-photo-box {
+  flex-shrink: 0;
+  width: 90px;
+  height: 120px;
+  border: 1px solid #0a0a0a;
+  background: #f0ede0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ijz-photo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ijz-photo-placeholder {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #8a7f5c;
+  text-align: center;
+}
+
+.ijz-signature-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.ijz-place-date {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: #4a4534;
+  margin: 0 0 10px;
+}
+
+.ijz-dual-signature {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  text-align: center;
+}
+
+.ijz-signature-role {
+  font-size: 0.85rem;
+  color: #2a2518;
+  margin: 0 0 4px;
+}
+
+.ijz-signature-area {
+  position: relative;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ijz-sign-img {
+  max-height: 50px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.ijz-stamp-img {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  opacity: 0.85;
+  left: 50%;
+  transform: translateX(-30%) rotate(-8deg);
+  pointer-events: none;
+}
+
+.ijz-signature-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #1a1610;
+  border-top: 1px solid #0a0a0a;
+  padding-top: 4px;
+  margin: 0;
+  word-break: break-word;
+}
+
+.ijz-verify-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #cfc6a8;
+}
+
+.ijz-verify-text p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: #6b5f42;
+  line-height: 1.5;
+}
+
+.ijz-qr {
+  flex-shrink: 0;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #0a0a0a;
+  line-height: 0;
+}
+
+@media (max-width: 480px) {
+  .ijazah-modal { padding: 30px 20px; }
+  .ijz-main-title { font-size: 1.6rem; letter-spacing: 0.18em; }
+  .ijz-detail-row { grid-template-columns: 120px 10px 1fr; font-size: 0.8rem; }
+  .ijz-bottom-row { flex-direction: column; align-items: center; }
+  .ijz-place-date { text-align: center; }
+  .ijz-dual-signature { gap: 10px; }
+  .ijz-top-row { flex-direction: column; align-items: center; text-align: center; }
+}
+
+/* =========================================================================
+   FOTO TERDEKRIPSI (tab Verifikasi, setelah dekripsi berhasil)
+   ========================================================================= */
+.decrypted-photo-preview {
+  width: 90px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  margin-bottom: 14px;
+  display: block;
+}
+
+/* =========================================================================
+   RSA PRIVATE KEY DISPLAY (Admin Dashboard)
+   ========================================================================= */
+.key-display-textarea {
+  width: 100%;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 12px;
+  resize: vertical;
+  margin-top: 4px;
+}
+
+.key-display-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* =========================================================================
+   FOTO BULAT DI CERTIFICATE CARD (muncul kalau sudah didekripsi)
+   ========================================================================= */
+.cert-photo-round {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 50% !important;
+  border: 2px solid #cfc6a8;
+  display: block;
+  margin: 0 auto 10px;
+}
+
+/* =========================================================================
+   IPFS STATUS INDICATOR (form Terbitkan, dekat upload foto)
+   ========================================================================= */
+.ipfs-status {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+}
+
+.ipfs-status-ok {
+  color: var(--ok);
+  border-color: var(--ok-border);
+}
+
+.ipfs-status-warn {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+/* =========================================================================
+   RSA KEYPAIR SUBSECTIONS (Admin Dashboard — lihat/export/import)
+   ========================================================================= */
+.keypair-subsection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.keypair-subsection:first-of-type {
+  margin-top: 20px;
+}
+
+.keypair-subsection .qr-label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.keypair-subsection .settings-hint {
+  margin: 6px 0 12px;
+}

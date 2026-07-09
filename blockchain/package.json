@@ -1,0 +1,18 @@
+{
+  "name": "notaris-ijazah-dapp-blockchain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart contract & Hardhat setup untuk Sistem Notaris Ijazah/Sertifikat Terdesentralisasi",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.17"
+  }
+}
